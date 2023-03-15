@@ -1,25 +1,33 @@
-from dotenv import load_dotenv
+
 import requests
-import os
+import datetime as dt
+
 from pprint import pprint
+from config import Config
+
+requests_data = {
+    'orders' : 'wp-json/wc/v3/orders'
+}
 
 
-def send_request():
+def send_request(data: str, after: dt.datetime, before: dt.datetime = dt.datetime.today()) -> requests.models.Response:
 
-    user = os.environ.get('username')
-    password = os.environ.get('password')
+    requests_parameters = {
+        'after': after.isoformat(),
+        'before': before.isoformat()
+    }
 
-    response = requests.get('https://www.skorskadietetyk.com/wp-json/wc/v2/orders?before=2023-01-01T14:10:20', auth=(user, password))
-    pprint(type(response.json()))
+    response = requests.get(Config.SHOP_URL + requests_data[data],
+                    params=requests_parameters,
+                    auth=(Config.USER_NAME, Config.API_PASSWORD))
+    
+    
+    return response
 
 
+response = send_request('orders', dt.datetime.today() - dt.timedelta(days=20))
 
-env_file = '.env'
-load_dotenv(env_file)
-
-send_request()
-
-
+print(response.json())
 
 
 
