@@ -2,7 +2,7 @@
 import datetime as dt
 from config import Config
 
-from WooAPIConector import WooShop
+from WooAPIConnector import WooShop
 
 
 url = Config.SHOP_URL

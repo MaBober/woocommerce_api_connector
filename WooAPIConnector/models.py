@@ -4,20 +4,66 @@ import pandas as pd
 
 
 class WooShop:
+    """
+    A class represnting WooCommerce shop.
 
+    Attributes
+    ----------
+    url : str
+        URL address of shop to connect.
+    user : str
+        User key generated in WooCommerce REST API settings.
+    secret_key : str
+        Secret key generated in WooCommerce REST API settings.
+    
+        
+    Methods
+    ----------
+    get_raw_orders(after, before = dt.datetime.today())
+        Returns all data of orders placed between passed dates in JSON format.
+    get_basic_orders_data(after, before = dt.datetime.today(), only_completed=True)
+        Returns basic information about orders placed between passed dates in Pandas Dataframe.
+    """
+
+    #TODO: Move to settings file.
     requests_data = {
     'orders' : 'wp-json/wc/v3/orders'
     }
 
 
-    def __init__(self, shop_url, user, password) -> None:
+    def __init__(self, shop_url, user, secret_key) -> None:
+        """Constructor
+
+        Parameters
+        ----------
+        url : str
+            URL address of shop to connect.
+        user : str
+            User key generated in WooCommerce REST API settings.
+        secret_key : str
+            Secret key generated in WooCommerce REST API settings.
+        """
 
         self.url = shop_url
         self.user = user
-        self.passowrd = password
+        self.secret_key = secret_key
 
 
-    def get_raw_orders(self, after: dt.datetime, before: dt.datetime = dt.datetime.today()) -> requests.models.Response:
+    def get_raw_orders(self, after: dt.datetime, before: dt.datetime = dt.datetime.today()) -> list:
+        """Returns all data of orders placed between passed dates in JSON format.
+
+        Parameters
+        ----------
+        after : dt.datetime
+            Defines date of first order which will be collected.
+        before : dt.datetime, optional
+            Defines date of last order which will be collected, by default dt.datetime.today()
+
+        Returns
+        -------
+        list
+            List of all data about selected orders in JSON style format.
+        """
     
         page_nr = 1
         total_response = []
@@ -33,7 +79,7 @@ class WooShop:
 
             page_response = requests.get(self.url + WooShop.requests_data['orders'],
                             params=requests_parameters,
-                            auth=(self.user, self.passowrd))
+                            auth=(self.user, self.secret_key))
 
             if len(page_response.json()) == 0:
                 break
@@ -43,7 +89,35 @@ class WooShop:
     
         return total_response
     
+    #TODO: split to whole orders version and divided for single lines.
     def get_basic_orders_data(self, after: dt.datetime, before: dt.datetime = dt.datetime.today(), only_completed=True) -> pd.DataFrame :
+        """Returns basic information about orders .
+
+        Orders to analyze can be limited by dates range.
+        Multi-position orders are divided to single products.
+        Data included in returned DataFrame:
+            - line ID,
+            - price,
+            - customer ID,
+            - order completion date
+            - product name
+            - product variant
+
+
+        Parameters
+        ----------
+        after : dt.datetime
+            Defines date of first order which will be collected.
+        before : dt.datetime, optional
+            Defines date of last order which will be collected, by default dt.datetime.today()
+        only_completed : bool, optional
+            If True, not completed orders will be exluded from returned data set, by default True.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with orders data.
+        """
 
         response = self.get_raw_orders(after=after, before=before)
 
