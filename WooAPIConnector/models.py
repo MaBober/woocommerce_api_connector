@@ -27,7 +27,8 @@ class WooShop:
 
     #TODO: Move to settings file.
     requests_data = {
-    'orders' : 'wp-json/wc/v3/orders'
+    'orders' : 'wp-json/wc/v3/orders',
+    'customers' : '/wp-json/wc/v3/customers'
     }
 
 
@@ -48,6 +49,51 @@ class WooShop:
         self.user = user
         self.secret_key = secret_key
 
+    
+    def __send_GET_request(self, request_scope, *additional_parameters):
+        """Sends GET request to WooCommerce shop. 
+
+        Implements pagination handling. All pages are added to one list.
+        Additional paramaters to request can be provided by argument.
+
+        Parameters
+        ---------- 
+        request_scope : str
+            Woocoomerce URL for specfic request. 
+        *additional_parameters: dict
+            Dictionary containing additional parameters for GET request.
+
+        Returns
+        -------
+        list
+            Full response recivied from API, all pages aggregated to list.
+        """
+
+        page_nr = 1
+        total_response = []
+
+        requests_parameters = {
+            'per_page': 20,
+            'page': page_nr
+        }
+
+        for parameter in additional_parameters:
+            requests_parameters.update(parameter)
+
+        while True:
+            
+            page_response = requests.get(self.url + request_scope,
+                params=requests_parameters,
+                auth=(self.user, self.secret_key))
+
+            if len(page_response.json()) == 0:
+                break
+
+            total_response.extend(page_response.json())
+            requests_parameters['page'] += 1
+
+        return total_response
+
 
     def get_raw_orders(self, after: dt.datetime, before: dt.datetime = dt.datetime.today()) -> list:
         """Returns all data of orders placed between passed dates in JSON format.
@@ -65,29 +111,27 @@ class WooShop:
             List of all data about selected orders in JSON style format.
         """
     
-        page_nr = 1
-        total_response = []
-
-        while True:
-
-            requests_parameters = {
+        additional_parameters = {
                 'after': after.isoformat(),
-                'before': before.isoformat(),
-                'per_page': 20,
-                'page': page_nr
-            }
-
-            page_response = requests.get(self.url + WooShop.requests_data['orders'],
-                            params=requests_parameters,
-                            auth=(self.user, self.secret_key))
-
-            if len(page_response.json()) == 0:
-                break
-
-            total_response.extend(page_response.json())
-            page_nr +=1
+                'before': before.isoformat()}
+        
+        total_response = self.__send_GET_request(WooShop.requests_data['orders'], additional_parameters)
     
         return total_response
+
+    def get_raw_customers(self):
+        """Returns all data customers in JSON format.
+
+        Returns
+        -------
+        list
+            List of all data about all customers in JSON style format.
+        """
+
+        total_response = self.__send_GET_request(WooShop.requests_data['customers'])
+    
+        return total_response
+
     
     #TODO: split to whole orders version and divided for single lines.
     def get_basic_orders_data(self, after: dt.datetime, before: dt.datetime = dt.datetime.today(), only_completed=True) -> pd.DataFrame :
