@@ -2,6 +2,11 @@ import requests
 import datetime as dt
 import pandas as pd
 
+class WooCommerceAPIException(Exception):
+
+    def __init__(self, text) -> None:
+        super().__init__(text)
+
 
 class WooShop:
     """
@@ -28,7 +33,8 @@ class WooShop:
     #TODO: Move to settings file.
     requests_data = {
     'orders' : 'wp-json/wc/v3/orders',
-    'customers' : '/wp-json/wc/v3/customers'
+    'customers' : '/wp-json/wc/v3/customers',
+    'products': '/wp-json/wc/v3/productsWWW'
     }
 
 
@@ -85,14 +91,32 @@ class WooShop:
             page_response = requests.get(self.url + request_scope,
                 params=requests_parameters,
                 auth=(self.user, self.secret_key))
-
+            
+            WooShop.__check_response_status(page_response)
+            
             if len(page_response.json()) == 0:
                 break
 
             total_response.extend(page_response.json())
             requests_parameters['page'] += 1
+            break
 
         return total_response
+    
+    @staticmethod
+    def __check_response_status(response: requests.models.Response):
+
+            if response.status_code == 400:
+                raise WooCommerceAPIException("Error 400: Invalid request.")
+
+            if response.status_code == 401:
+                raise WooCommerceAPIException("Error 401: Authentication failed. Check API keys and permisions.")
+            
+            elif response.status_code == 404:
+                raise WooCommerceAPIException("Error 404: Requested resources didn't exsit.")
+            
+            elif response.status_code == 500:
+                raise WooCommerceAPIException("Error 500: WooCommerce server error. Try again later.")
 
 
     def get_raw_orders(self, after: dt.datetime, before: dt.datetime = dt.datetime.today()) -> list:
@@ -131,6 +155,13 @@ class WooShop:
         total_response = self.__send_GET_request(WooShop.requests_data['customers'])
     
         return total_response
+    
+    def get_raw_products(self):
+        
+        total_response = self.__send_GET_request(WooShop.requests_data['products'])
+    
+        return total_response
+        
 
     
     #TODO: split to whole orders version and divided for single lines.
@@ -193,3 +224,5 @@ class WooShop:
         basic_orders_data['cena'] =  pd.to_numeric(basic_orders_data['cena'])
         
         return basic_orders_data
+    
+
